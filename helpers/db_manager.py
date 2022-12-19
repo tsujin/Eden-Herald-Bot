@@ -67,3 +67,11 @@ async def get_boss_data():
             for row in result:
                 result_list.append(row)
             return result_list
+
+
+async def get_single_boss_data(boss_name):
+    async with aiosqlite.connect("database/database.db") as db:
+        rows = await db.execute("SELECT * FROM boss_kills WHERE boss_name LIKE ?", ['%'+boss_name+'%'])
+        async with rows as cursor:
+            result = await cursor.fetchone()
+            return result if result else None

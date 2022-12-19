@@ -49,7 +49,7 @@ class PveHerald(commands.Cog):
                 new_killed_at = parsed_site_data[boss_name]
 
                 if new_killed_at > killed_at:
-                    print("Sending a boss update")
+                    print(f"Sending a boss update for {boss_name}")
                     await db_manager.update_boss_kill(boss_name, new_killed_at)
                     await self.send_boss_update(boss_name, new_killed_at)
 
@@ -69,7 +69,33 @@ class PveHerald(commands.Cog):
         for server in self.bot.guilds:
             channel_id = await db_manager.get_channel(server.id)
             channel = self.bot.get_channel(channel_id)
-            await channel.send(embed=boss_update)
+            if channel:
+                print(f"Sending to {channel} in {server}")
+                await channel.send(embed=boss_update)
+
+    @commands.hybrid_command(
+        name="lastkill",
+        description="Reports last kill time for selected boss.",
+    )
+    async def report_last_kill(self, context: commands.Context, input_boss_name):
+        try:
+            boss_name, killed_at = await db_manager.get_single_boss_data(input_boss_name)
+            killed_at = datetime.datetime.strptime(killed_at, '%Y-%m-%d %H:%M:%S.%f')
+            timestamp = killed_at.replace(tzinfo=datetime.timezone.utc).timestamp()
+            boss_update = discord.Embed(
+                description=f"was killed <t:{int(timestamp)}:R>",
+                title=boss_name,
+                color=0x9C84EF
+            )
+            await context.send(embed=boss_update)
+        except TypeError:
+            boss_update = discord.Embed(
+                description=f"Could not find {input_boss_name} please try a different name.",
+                title="Error",
+                color=0xcc0000
+            )
+            await context.send(embed=boss_update, ephemeral=True)
+
 
     @commands.hybrid_command(
         name="setchannel",
