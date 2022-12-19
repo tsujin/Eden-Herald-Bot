@@ -1,6 +1,6 @@
 from discord.ext import commands, tasks
 from helpers import db_manager, checks
-import owner
+from cogs import owner
 import aiohttp
 import datetime
 import discord
