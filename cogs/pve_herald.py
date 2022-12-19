@@ -1,5 +1,6 @@
 from discord.ext import commands, tasks
-from helpers import db_manager
+from helpers import db_manager, checks
+import owner
 import aiohttp
 import datetime
 import discord
@@ -95,27 +96,17 @@ class PveHerald(commands.Cog):
 
     async def create_kill_embed(self, boss_name, killed_at):
         killed_at = killed_at.replace(tzinfo=datetime.timezone.utc)
-        now = datetime.datetime.now(tz=datetime.timezone.utc)
-        delta = now - killed_at
-
-        description_string = 'was killed'
-        days, seconds = delta.days, delta.seconds
-        hours = seconds // 3600
-        print(hours)
-        minutes = (seconds % 3600) // 60
-
-        description_string += f' {hours} hour{"s" if hours > 1 else ""}' if hours > 0 else ''
-        description_string += f' {minutes} minute{"s" if minutes > 1 else ""}' if minutes > 0 else ''
-        description_string += ' ago.'
+        timestamp = killed_at.timestamp()
 
         update_embed = discord.Embed(
-            description=description_string,
+            description=f"was killed <t:{int(timestamp)}:R> on <t:{int(timestamp)}:f>",
             title=boss_name,
             color=0x9C84EF
         )
 
         return update_embed
 
+    @checks.is_owner()
     @commands.hybrid_command(
         name="setchannel",
         description="Sets channel to report boss kills in.",
