@@ -33,6 +33,7 @@ class PveHerald(commands.Cog):
 
     @tasks.loop(minutes=5.0)
     async def update_boss_data(self):
+        print("Beginning boss data update")
         db_data = await db_manager.get_boss_data()
         if not db_data:
             data = await self.fetch_data()
@@ -58,20 +59,18 @@ class PveHerald(commands.Cog):
         self.update_boss_data.start()
 
     async def send_boss_update(self, boss_name, killed_at):
-        timestamp = killed_at.replace(tzinfo=datetime.timezone.utc).timestamp()
-
-        boss_update = discord.Embed(
-            description=f"was killed <t:{int(timestamp)}:R>",
-            title=boss_name,
-            color=0x9C84EF
-        )
+        killed_at = killed_at.replace(tzinfo=datetime.timezone.utc)
+        embed = await self.create_kill_embed(boss_name, killed_at)
 
         for server in self.bot.guilds:
+            print(f"Checking {server} for channel...")
             channel_id = await db_manager.get_channel(server.id)
-            channel = self.bot.get_channel(channel_id)
+            print(channel_id)
+            channel = server.get_channel(int(channel_id))
+            print(channel)
             if channel:
                 print(f"Sending to {channel} in {server}")
-                await channel.send(embed=boss_update)
+                await channel.send(embed=embed)
 
     @commands.hybrid_command(
         name="lastkill",
@@ -81,21 +80,41 @@ class PveHerald(commands.Cog):
         try:
             boss_name, killed_at = await db_manager.get_single_boss_data(input_boss_name)
             killed_at = datetime.datetime.strptime(killed_at, '%Y-%m-%d %H:%M:%S.%f')
-            timestamp = killed_at.replace(tzinfo=datetime.timezone.utc).timestamp()
-            boss_update = discord.Embed(
-                description=f"was killed <t:{int(timestamp)}:R>",
-                title=boss_name,
-                color=0x9C84EF
-            )
-            await context.send(embed=boss_update)
+
+            embed = await self.create_kill_embed(boss_name, killed_at)
+
+            await context.send(embed=embed)
+
         except TypeError:
-            boss_update = discord.Embed(
+            error = discord.Embed(
                 description=f"Could not find {input_boss_name} please try a different name.",
                 title="Error",
                 color=0xcc0000
             )
-            await context.send(embed=boss_update, ephemeral=True)
+            await context.send(embed=error, ephemeral=True)
 
+    async def create_kill_embed(self, boss_name, killed_at):
+        killed_at = killed_at.replace(tzinfo=datetime.timezone.utc)
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        delta = now - killed_at
+
+        description_string = 'was killed'
+        days, seconds = delta.days, delta.seconds
+        hours = seconds // 3600
+        print(hours)
+        minutes = (seconds % 3600) // 60
+
+        description_string += f' {hours} hour{"s" if hours > 1 else ""}' if hours > 0 else ''
+        description_string += f' {minutes} minute{"s" if minutes > 1 else ""}' if minutes > 0 else ''
+        description_string += ' ago.'
+
+        update_embed = discord.Embed(
+            description=description_string,
+            title=boss_name,
+            color=0x9C84EF
+        )
+
+        return update_embed
 
     @commands.hybrid_command(
         name="setchannel",
