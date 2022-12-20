@@ -20,11 +20,10 @@ from discord.ext.commands import Bot, Context
 
 import exceptions
 
-if not os.path.isfile("config.json"):
-    sys.exit("'config.json' not found! Please add it and try again.")
-else:
-    with open("config.json") as file:
-        config = json.load(file)
+try:
+    config = json.loads(os.environ['HERALD_CONFIG'])
+except KeyError:
+    print("Bot environment variable is not configured correctly. Please see the README for setting up an environment.")
 
 """	
 Setup bot intents (events restrictions)
@@ -216,4 +215,4 @@ async def load_cogs() -> None:
 
 asyncio.run(init_db())
 asyncio.run(load_cogs())
-bot.run(config["token"])
+bot.run(config['token'])
